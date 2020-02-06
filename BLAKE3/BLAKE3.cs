@@ -54,12 +54,11 @@ namespace BLAKE3
                 return BitConverter.GetBytes(self);
             }
 
-            var leBytes = new byte[4];
-            leBytes[3] = (byte) ((self & 0xff000000) >> 24);
-            leBytes[2] = (byte) ((self & 0x00ff0000) >> 16);
-            leBytes[1] = (byte) ((self & 0x0000ff00) >> 8);
-            leBytes[0] = (byte) (self & 0x000000ff);
-            return leBytes;
+            return new[]
+            {
+                (byte) ((self & 0xff000000) >> 24), (byte) ((self & 0x00ff0000) >> 16),
+                (byte) ((self & 0x0000ff00) >> 8), (byte) (self & 0x000000ff)
+            };
         }
     }
 
