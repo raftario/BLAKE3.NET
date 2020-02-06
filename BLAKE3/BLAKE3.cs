@@ -3,25 +3,25 @@ using System.Security.Cryptography;
 
 namespace BLAKE3
 {
-    internal static class Constants
+    public static class Constants
     {
         public const uint OutLen = 32;
         public const uint KeyLen = 32;
-        public const uint BlockLen = 64;
-        public const uint ChunkLen = 1024;
+        internal const uint BlockLen = 64;
+        internal const uint ChunkLen = 1024;
 
-        public const uint ChunkStart = 1 << 0;
-        public const uint ChunkEnd = 1 << 1;
-        public const uint Parent = 1 << 2;
-        public const uint Root = 1 << 3;
-        public const uint KeyedHash = 1 << 4;
-        public const uint DeriveKyContext = 1 << 5;
-        public const uint DeriveKeyMaterial = 1 << 6;
+        internal const uint ChunkStart = 1 << 0;
+        internal const uint ChunkEnd = 1 << 1;
+        internal const uint Parent = 1 << 2;
+        internal const uint Root = 1 << 3;
+        internal const uint KeyedHash = 1 << 4;
+        internal const uint DeriveKyContext = 1 << 5;
+        internal const uint DeriveKeyMaterial = 1 << 6;
 
-        public static readonly uint[] IV =
+        internal static readonly uint[] Iv =
             {0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19};
 
-        public static readonly uint[] MsgPermutation = {2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8};
+        internal static readonly uint[] MsgPermutation = {2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8};
     }
 
     internal static class Extensions
@@ -38,7 +38,7 @@ namespace BLAKE3
             return slice;
         }
 
-        public static uint FromLEBytes(byte[] bytes)
+        public static uint FromLeBytes(byte[] bytes)
         {
             if (BitConverter.IsLittleEndian)
             {
@@ -48,7 +48,7 @@ namespace BLAKE3
             return (uint) (bytes[3] << 24) | (uint) (bytes[2] << 16) | (uint) (bytes[1] << 8) | bytes[0];
         }
 
-        public static byte[] ToLEBytes(this uint self)
+        public static byte[] ToLeBytes(this uint self)
         {
             if (BitConverter.IsLittleEndian)
             {
@@ -104,8 +104,8 @@ namespace BLAKE3
             uint[] state =
             {
                 chainingValue[0], chainingValue[1], chainingValue[2], chainingValue[3], chainingValue[4],
-                chainingValue[5], chainingValue[6], chainingValue[7], Constants.IV[0], Constants.IV[1], Constants.IV[2],
-                Constants.IV[3], (uint) counter, (uint) (counter >> 32), blockLen, flags
+                chainingValue[5], chainingValue[6], chainingValue[7], Constants.Iv[0], Constants.Iv[1], Constants.Iv[2],
+                Constants.Iv[3], (uint) counter, (uint) (counter >> 32), blockLen, flags
             };
             var block = (uint[]) blockWords.Clone();
 
@@ -142,17 +142,17 @@ namespace BLAKE3
             for (var i = 0; i < bytes.Length; i += 4)
             {
                 var bytesBlock = bytes.Slice(i, 4);
-                words[j] = Extensions.FromLEBytes(bytesBlock);
+                words[j] = Extensions.FromLeBytes(bytesBlock);
 
                 j++;
             }
         }
 
-        public static Output ParentOutput(uint[] leftChildCV, uint[] rightChildCV, uint[] key, uint flags)
+        public static Output ParentOutput(uint[] leftChildCv, uint[] rightChildCv, uint[] key, uint flags)
         {
             var blockWords = new uint[16];
-            Array.Copy(leftChildCV, 0, blockWords, 0, 8);
-            Array.Copy(rightChildCV, 0, blockWords, 8, 8);
+            Array.Copy(leftChildCv, 0, blockWords, 0, 8);
+            Array.Copy(rightChildCv, 0, blockWords, 8, 8);
             return new Output
             {
                 InputChainingValue = key,
@@ -163,9 +163,9 @@ namespace BLAKE3
             };
         }
 
-        public static uint[] ParentCV(uint[] leftChildCV, uint[] rightChildCV, uint[] key, uint flags)
+        public static uint[] ParentCv(uint[] leftChildCv, uint[] rightChildCv, uint[] key, uint flags)
         {
-            return ParentOutput(leftChildCV, rightChildCV, key, flags).ChainingValue();
+            return ParentOutput(leftChildCv, rightChildCv, key, flags).ChainingValue();
         }
     }
 
@@ -192,7 +192,7 @@ namespace BLAKE3
                 var k = 0;
                 for (var j = 0; j < words.Length; j++)
                 {
-                    Array.Copy(words[j].ToLEBytes(), 0, outSlice, i + k, 4);
+                    Array.Copy(words[j].ToLeBytes(), 0, outSlice, i + k, 4);
 
                     k += 4;
                 }
@@ -266,14 +266,15 @@ namespace BLAKE3
     {
         private ChunkState _chunkState;
         private uint[] _key;
-        private uint[][] _cvStack;
+        private readonly uint[][] _cvStack;
         private byte _cvStackLen;
-        private uint _flags;
-
-        public int HashLen = 256;
+        private readonly uint _flags;
 
         private BLAKE3(uint[] key, uint flags)
         {
+            HashSizeValue = (int) Constants.OutLen * 8;
+            State = 0;
+
             _chunkState = new ChunkState(key, 0, flags);
             _key = key;
             _cvStack = new uint[54][];
@@ -285,12 +286,18 @@ namespace BLAKE3
             _flags = flags;
         }
 
-        public BLAKE3() : this(Constants.IV, 0)
+        public BLAKE3() : this(Constants.Iv, 0)
         {
         }
 
         private static uint[] KeyWordsFromKey(byte[] key)
         {
+            if (key.Length != Constants.KeyLen)
+            {
+                throw new CryptographicException(
+                    $"Expected a {Constants.KeyLen} bytes long key, got a {key.Length} long one");
+            }
+
             var keyWords = new uint[8];
             Functions.WordsFromLittleEndianBytes(key, ref keyWords);
             return keyWords;
@@ -298,6 +305,7 @@ namespace BLAKE3
 
         public BLAKE3(byte[] key) : this(KeyWordsFromKey(key), Constants.KeyedHash)
         {
+            KeyValue = key;
         }
 
         private void PushStack(uint[] cv)
@@ -312,27 +320,56 @@ namespace BLAKE3
             return _cvStack[_cvStackLen];
         }
 
-        private void AddChunkChainingValue(uint[] newCV, ulong totalChunks)
+        private void AddChunkChainingValue(uint[] newCv, ulong totalChunks)
         {
             while ((totalChunks & 1) == 0)
             {
-                newCV = Functions.ParentCV(PopStack(), newCV, _key, _flags);
+                newCv = Functions.ParentCv(PopStack(), newCv, _key, _flags);
                 totalChunks >>= 1;
             }
-            PushStack(newCV);
+            PushStack(newCv);
+        }
+
+        #region Overrides
+
+        public override byte[] Hash => HashFinal();
+
+        public new int HashSize
+        {
+            get => HashSizeValue;
+            set => HashSizeValue = value;
+        }
+
+        public override byte[] Key
+        {
+            set
+            {
+                if (State != 0)
+                {
+                    throw new CryptographicException("Tried to set key on a non-clean hasher");
+                }
+
+                KeyValue = value;
+                _key = KeyWordsFromKey(value);
+            }
         }
 
         protected override void HashCore(byte[] array, int ibStart, int cbSize)
         {
+            if (State == 0)
+            {
+                State = 1;
+            }
+
             var roof = ibStart + cbSize;
             var i = ibStart;
             while (i < roof)
             {
                 if (_chunkState.Len == Constants.ChunkLen)
                 {
-                    var chunkCV = _chunkState.Output().ChainingValue();
+                    var chunkCv = _chunkState.Output().ChainingValue();
                     var totalChunks = _chunkState.ChunkCounter + 1;
-                    AddChunkChainingValue(chunkCV, totalChunks);
+                    AddChunkChainingValue(chunkCv, totalChunks);
                     _chunkState = new ChunkState(_key, totalChunks, _flags);
                 }
 
@@ -353,14 +390,26 @@ namespace BLAKE3
                 parentNodesRemaining--;
                 output = Functions.ParentOutput(_cvStack[parentNodesRemaining], output.ChainingValue(), _key, _flags);
             }
-            var ret = new byte[HashLen];
+            var ret = new byte[HashSizeValue / 8];
             output.RootOutputBytes(ref ret);
             return ret;
         }
 
         public override void Initialize()
         {
-            // TODO
+            State = 0;
+
+            _chunkState = new ChunkState(_key, 0, _flags);
+            for (var i = 0; i < 54; i++)
+            {
+                for (var j = 0; j <= 8; j++)
+                {
+                    _cvStack[i][j] = 0;
+                }
+            }
+            _cvStackLen = 0;
         }
+
+        #endregion
     }
 }
