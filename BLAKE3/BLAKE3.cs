@@ -30,10 +30,10 @@ namespace BLAKE3
             return (self >> count) | (self << (32 - count));
         }
 
-        public static T[] Slice<T>(this T[] source, int index, int length)
+        public static T[] Slice<T>(this T[] self, int index, int length)
         {
             var slice = new T[length];
-            Array.Copy(source, index, slice, 0, length);
+            Array.Copy(self, index, slice, 0, length);
             return slice;
         }
 
