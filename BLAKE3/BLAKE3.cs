@@ -39,11 +39,21 @@ namespace BLAKE3
 
         public static uint FromLEBytes(byte[] bytes)
         {
+            if (BitConverter.IsLittleEndian)
+            {
+                return BitConverter.ToUInt32(bytes, 0);
+            }
+
             return (uint) (bytes[3] << 24) | (uint) (bytes[2] << 16) | (uint) (bytes[1] << 8) | bytes[0];
         }
 
         public static byte[] ToLEBytes(this uint self)
         {
+            if (BitConverter.IsLittleEndian)
+            {
+                return BitConverter.GetBytes(self);
+            }
+
             var leBytes = new byte[4];
             leBytes[3] = (byte) ((self & 0xff000000) >> 24);
             leBytes[2] = (byte) ((self & 0x00ff0000) >> 16);
