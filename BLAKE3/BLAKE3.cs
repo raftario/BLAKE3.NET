@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Security.Cryptography;
 
 namespace BLAKE3
 {
@@ -64,7 +65,6 @@ namespace BLAKE3
 
     internal static class Functions
     {
-        // The mixing function, G, which mixes either a column or a diagonal.
         public static void G(ref uint[] state, uint a, uint b, uint c, uint d, uint mx, uint my)
         {
             state[a] = state[a] + state[b] + mx;
@@ -79,12 +79,10 @@ namespace BLAKE3
 
         public static void Round(ref uint[] state, uint[] m)
         {
-            // Mix the columns.
             G(ref state, 0, 4, 8, 12, m[0], m[1]);
             G(ref state, 1, 5, 9, 13, m[2], m[3]);
             G(ref state, 2, 6, 10, 14, m[4], m[5]);
             G(ref state, 3, 7, 11, 15, m[6], m[7]);
-            // Mix the diagonals.
             G(ref state, 0, 5, 10, 15, m[8], m[9]);
             G(ref state, 1, 6, 11, 12, m[10], m[11]);
             G(ref state, 2, 7, 8, 13, m[12], m[13]);
@@ -111,19 +109,19 @@ namespace BLAKE3
             };
             var block = (uint[]) blockWords.Clone();
 
-            Round(ref state, block); // round 1
+            Round(ref state, block);
             Permute(ref block);
-            Round(ref state, block); // round 2
+            Round(ref state, block);
             Permute(ref block);
-            Round(ref state, block); // round 3
+            Round(ref state, block);
             Permute(ref block);
-            Round(ref state, block); // round 4
+            Round(ref state, block);
             Permute(ref block);
-            Round(ref state, block); // round 5
+            Round(ref state, block);
             Permute(ref block);
-            Round(ref state, block); // round 6
+            Round(ref state, block);
             Permute(ref block);
-            Round(ref state, block); // round 7
+            Round(ref state, block);
 
             for (var i = 0; i < 8; i++)
             {
@@ -149,6 +147,26 @@ namespace BLAKE3
                 j++;
             }
         }
+
+        public static Output ParentOutput(uint[] leftChildCV, uint[] rightChildCV, uint[] key, uint flags)
+        {
+            var blockWords = new uint[16];
+            Array.Copy(leftChildCV, 0, blockWords, 0, 8);
+            Array.Copy(rightChildCV, 0, blockWords, 8, 8);
+            return new Output
+            {
+                InputChainingValue = key,
+                BlockWords = blockWords,
+                Counter = 0,
+                BlockLen = Constants.BlockLen,
+                Flags = Constants.Parent | flags
+            };
+        }
+
+        public static uint[] ParentCV(uint[] leftChildCV, uint[] rightChildCV, uint[] key, uint flags)
+        {
+            return ParentOutput(leftChildCV, rightChildCV, key, flags).ChainingValue();
+        }
     }
 
     internal class Output
@@ -164,7 +182,7 @@ namespace BLAKE3
             return Functions.First8Words(Functions.Compress(InputChainingValue, BlockWords, Counter, BlockLen, Flags));
         }
 
-        public void RootOutputBytes(ref uint[] outSlice)
+        public void RootOutputBytes(ref byte[] outSlice)
         {
             ulong outputBlockCounter = 0;
             for (var i = 0; i < outSlice.Length; i += 2 * (int) Constants.OutLen)
@@ -186,7 +204,7 @@ namespace BLAKE3
     internal class ChunkState
     {
         private uint[] _chainingValue;
-        private readonly ulong _chunkCounter;
+        public readonly ulong ChunkCounter;
         private byte[] _block;
         private byte _blockLen;
         private byte _blocksCompressed;
@@ -195,7 +213,7 @@ namespace BLAKE3
         public ChunkState(uint[] key, ulong chunkCounter, uint flags)
         {
             _chainingValue = key;
-            _chunkCounter = chunkCounter;
+            ChunkCounter = chunkCounter;
             _block = new byte[Constants.BlockLen];
             _blockLen = 0;
             _blocksCompressed = 0;
@@ -214,7 +232,7 @@ namespace BLAKE3
                 {
                     var blockWords = new uint[16];
                     Functions.WordsFromLittleEndianBytes(_block, ref blockWords);
-                    _chainingValue = Functions.First8Words(Functions.Compress(_chainingValue, blockWords, _chunkCounter,
+                    _chainingValue = Functions.First8Words(Functions.Compress(_chainingValue, blockWords, ChunkCounter,
                         Constants.BlockLen, _flags | StartFlag));
                     _blocksCompressed++;
                     _block = new byte[Constants.BlockLen];
@@ -237,12 +255,112 @@ namespace BLAKE3
             {
                 InputChainingValue = _chainingValue,
                 BlockWords = blockWords,
-                Counter = _chunkCounter,
+                Counter = ChunkCounter,
                 BlockLen = _blockLen,
                 Flags = _flags | StartFlag | Constants.ChunkEnd
             };
         }
     }
 
-    // TODO: https://github.com/BLAKE3-team/BLAKE3/blob/master/reference_impl/reference_impl.rs#L248
+    public class BLAKE3 : KeyedHashAlgorithm
+    {
+        private ChunkState _chunkState;
+        private uint[] _key;
+        private uint[][] _cvStack;
+        private byte _cvStackLen;
+        private uint _flags;
+
+        public int HashLen = 256;
+
+        private BLAKE3(uint[] key, uint flags)
+        {
+            _chunkState = new ChunkState(key, 0, flags);
+            _key = key;
+            _cvStack = new uint[54][];
+            for (var i = 0; i < 54; i++)
+            {
+                _cvStack[i] = new uint[8];
+            }
+            _cvStackLen = 0;
+            _flags = flags;
+        }
+
+        public BLAKE3() : this(Constants.IV, 0)
+        {
+        }
+
+        private static uint[] KeyWordsFromKey(byte[] key)
+        {
+            var keyWords = new uint[8];
+            Functions.WordsFromLittleEndianBytes(key, ref keyWords);
+            return keyWords;
+        }
+
+        public BLAKE3(byte[] key) : this(KeyWordsFromKey(key), Constants.KeyedHash)
+        {
+        }
+
+        private void PushStack(uint[] cv)
+        {
+            _cvStack[_cvStackLen] = cv;
+            _cvStackLen++;
+        }
+
+        private uint[] PopStack()
+        {
+            _cvStackLen--;
+            return _cvStack[_cvStackLen];
+        }
+
+        private void AddChunkChainingValue(uint[] newCV, ulong totalChunks)
+        {
+            while ((totalChunks & 1) == 0)
+            {
+                newCV = Functions.ParentCV(PopStack(), newCV, _key, _flags);
+                totalChunks >>= 1;
+            }
+            PushStack(newCV);
+        }
+
+        protected override void HashCore(byte[] array, int ibStart, int cbSize)
+        {
+            var roof = ibStart + cbSize;
+            var i = ibStart;
+            while (i < roof)
+            {
+                if (_chunkState.Len == Constants.ChunkLen)
+                {
+                    var chunkCV = _chunkState.Output().ChainingValue();
+                    var totalChunks = _chunkState.ChunkCounter + 1;
+                    AddChunkChainingValue(chunkCV, totalChunks);
+                    _chunkState = new ChunkState(_key, totalChunks, _flags);
+                }
+
+                var want = Constants.ChunkLen - _chunkState.Len;
+                var take = (int) Math.Min(want, roof - i);
+                var input = array.Slice(i, take);
+                _chunkState.Update(input);
+                i += take;
+            }
+        }
+
+        protected override byte[] HashFinal()
+        {
+            var output = _chunkState.Output();
+            var parentNodesRemaining = _cvStackLen;
+            while (parentNodesRemaining > 0)
+            {
+                parentNodesRemaining--;
+                output = Functions.ParentOutput(_cvStack[parentNodesRemaining], output.ChainingValue(), _key, _flags);
+            }
+            var ret = new byte[HashLen];
+            output.RootOutputBytes(ref ret);
+            return ret;
+        }
+
+        public override void Initialize()
+        {
+            // TODO
+        }
+    }
 }
