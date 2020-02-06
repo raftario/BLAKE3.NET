@@ -153,11 +153,11 @@ namespace BLAKE3
 
     internal class Output
     {
-        public readonly uint[] InputChainingValue;
-        public readonly uint[] BlockWords;
-        public readonly ulong Counter;
-        public readonly uint BlockLen;
-        public readonly uint Flags;
+        public uint[] InputChainingValue;
+        public uint[] BlockWords;
+        public ulong Counter;
+        public uint BlockLen;
+        public uint Flags;
 
         public uint[] ChainingValue()
         {
@@ -183,5 +183,66 @@ namespace BLAKE3
         }
     }
 
-    // TODO: https://github.com/BLAKE3-team/BLAKE3/blob/master/reference_impl/reference_impl.rs#L174
+    internal class ChunkState
+    {
+        private uint[] _chainingValue;
+        private readonly ulong _chunkCounter;
+        private byte[] _block;
+        private byte _blockLen;
+        private byte _blocksCompressed;
+        private readonly uint _flags;
+
+        public ChunkState(uint[] key, ulong chunkCounter, uint flags)
+        {
+            _chainingValue = key;
+            _chunkCounter = chunkCounter;
+            _block = new byte[Constants.BlockLen];
+            _blockLen = 0;
+            _blocksCompressed = 0;
+            _flags = flags;
+        }
+
+        public uint Len => Constants.BlockLen * _blocksCompressed + _blockLen;
+
+        public uint StartFlag => _blocksCompressed == 0 ? Constants.ChunkStart : 0;
+
+        public void Update(byte[] input)
+        {
+            while (input.Length > 0)
+            {
+                if (_blockLen == Constants.BlockLen)
+                {
+                    var blockWords = new uint[16];
+                    Functions.WordsFromLittleEndianBytes(_block, ref blockWords);
+                    _chainingValue = Functions.First8Words(Functions.Compress(_chainingValue, blockWords, _chunkCounter,
+                        Constants.BlockLen, _flags | StartFlag));
+                    _blocksCompressed++;
+                    _block = new byte[Constants.BlockLen];
+                    _blockLen = 0;
+                }
+
+                var want = Constants.BlockLen - _blockLen;
+                var take = Math.Min(want, input.Length);
+                Array.Copy(input, 0, _block, _blockLen, take);
+                _blockLen += (byte) take;
+                input = input.Slice((int) take, (int) (input.Length - take));
+            }
+        }
+
+        public Output Output()
+        {
+            var blockWords = new uint[16];
+            Functions.WordsFromLittleEndianBytes(_block, ref blockWords);
+            return new Output
+            {
+                InputChainingValue = _chainingValue,
+                BlockWords = blockWords,
+                Counter = _chunkCounter,
+                BlockLen = _blockLen,
+                Flags = _flags | StartFlag | Constants.ChunkEnd
+            };
+        }
+    }
+
+    // TODO: https://github.com/BLAKE3-team/BLAKE3/blob/master/reference_impl/reference_impl.rs#L248
 }
