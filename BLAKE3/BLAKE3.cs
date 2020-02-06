@@ -64,6 +64,7 @@ namespace BLAKE3
 
     internal static class Functions
     {
+        // The mixing function, G, which mixes either a column or a diagonal.
         public static void G(ref uint[] state, uint a, uint b, uint c, uint d, uint mx, uint my)
         {
             state[a] = state[a] + state[b] + mx;
