@@ -286,14 +286,14 @@ namespace BLAKE3
         public uint StartFlag =>
             _blocksCompressed == 0 ? BLAKE3Constants.ChunkStart : 0;
 
-        public unsafe void Update(ref byte[] input)
+        public unsafe void Update(byte[] input)
         {
             var compressionOutput = stackalloc uint[16];
+            var blockWords = new uint[16];
             while (input.Length > 0)
             {
                 if (_blockLen == BLAKE3Constants.BlockLen)
                 {
-                    var blockWords = new uint[16];
                     Functions.WordsFromLittleEndianBytes(ref _block,
                         ref blockWords);
                     Functions.Compress(ref _chainingValue,
@@ -462,8 +462,7 @@ namespace BLAKE3
 
                     var want = BLAKE3Constants.ChunkLen - _chunkState.Len;
                     var take = (int) Math.Min(want, roof - i);
-                    var input = array.Slice(i, take);
-                    _chunkState.Update(ref input);
+                    _chunkState.Update(array.Slice(i, take));
                     i += take;
                 }
             }
