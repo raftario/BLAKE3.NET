@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BLAKE3", "BLAKE3\BLAKE3.csp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BLAKE3.Tests", "BLAKE3.Tests\BLAKE3.Tests.csproj", "{CF244D45-4E09-4D34-94F1-F393E8AAFDA4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BLAKE3.Benchmarks", "BLAKE3.Benchmarks\BLAKE3.Benchmarks.csproj", "{05CD50EC-8B9A-4B12-8572-10465F1370BC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BLAKE3.Benchmarks", "BLAKE3.Benchmarks\BLAKE3.Benchmarks.csproj", "{05CD50EC-8B9A-4B12-8572-10465F1370BC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,16 +15,16 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{526C3D8B-32C9-4A2F-BB58-6FB0EFC551C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{526C3D8B-32C9-4A2F-BB58-6FB0EFC551C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{526C3D8B-32C9-4A2F-BB58-6FB0EFC551C7}.Debug|Any CPU.ActiveCfg = Release|Any CPU
+		{526C3D8B-32C9-4A2F-BB58-6FB0EFC551C7}.Debug|Any CPU.Build.0 = Release|Any CPU
 		{526C3D8B-32C9-4A2F-BB58-6FB0EFC551C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{526C3D8B-32C9-4A2F-BB58-6FB0EFC551C7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{CF244D45-4E09-4D34-94F1-F393E8AAFDA4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{CF244D45-4E09-4D34-94F1-F393E8AAFDA4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CF244D45-4E09-4D34-94F1-F393E8AAFDA4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CF244D45-4E09-4D34-94F1-F393E8AAFDA4}.Release|Any CPU.Build.0 = Release|Any CPU
-		{05CD50EC-8B9A-4B12-8572-10465F1370BC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{05CD50EC-8B9A-4B12-8572-10465F1370BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05CD50EC-8B9A-4B12-8572-10465F1370BC}.Debug|Any CPU.ActiveCfg = Release|Any CPU
+		{05CD50EC-8B9A-4B12-8572-10465F1370BC}.Debug|Any CPU.Build.0 = Release|Any CPU
 		{05CD50EC-8B9A-4B12-8572-10465F1370BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{05CD50EC-8B9A-4B12-8572-10465F1370BC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
