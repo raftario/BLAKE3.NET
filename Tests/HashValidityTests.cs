@@ -30,7 +30,7 @@ namespace Tests
         private readonly BLAKE3.BLAKE3 hasher = new BLAKE3.BLAKE3(); 
 
         [Theory]
-        [MemberData(nameof(GetHashData), 4)]
+        [MemberData(nameof(GetHashData), 8)]
         public void CheckHashing(byte[] input, byte[] expectedHash)
         {
             var hashed = hasher.ComputeHash(input);

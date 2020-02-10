@@ -1,6 +1,10 @@
-﻿`test_data_*` was generated using the following Powershell function, using `64kb` as the size:
+﻿`test_data_*` was generated using the following Powershell function, using `64kb` as the size for the first four,
+then the remaining four used `37kb`, `185kb`, `1mb`, and `2mb+18kb`:
 
 ```ps
+$chars = [char[]] ([char]'0'..[char]'9' + [char]'A'..[char]'Z' + [char]'a'..[char]'z')
+$chars = $chars * 126
+
 function Random-File([string]$filename, [int]$size) {
   (1..($size/128)).foreach({-join (Get-Random $chars -Count 126) | add-content $filename })
 }
