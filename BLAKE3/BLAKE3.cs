@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 
 namespace BLAKE3
 {
-    public static class Constants
+    public static class BLAKE3Constants
     {
         public const uint OutLen = 32;
         public const uint KeyLen = 32;
@@ -19,9 +19,13 @@ namespace BLAKE3
         internal const uint DeriveKeyMaterial = 1 << 6;
 
         internal static readonly uint[] Iv =
-            {0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19};
+        {
+            0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F,
+            0x9B05688C, 0x1F83D9AB, 0x5BE0CD19
+        };
 
-        internal static readonly uint[] MsgPermutation = {2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8};
+        internal static readonly uint[] MsgPermutation =
+            {2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8};
     }
 
     internal static class Extensions
@@ -45,7 +49,8 @@ namespace BLAKE3
                 return BitConverter.ToUInt32(bytes, 0);
             }
 
-            return (uint) (bytes[3] << 24) | (uint) (bytes[2] << 16) | (uint) (bytes[1] << 8) | bytes[0];
+            return (uint) (bytes[3] << 24) | (uint) (bytes[2] << 16) |
+                   (uint) (bytes[1] << 8) | bytes[0];
         }
 
         public static byte[] ToLeBytes(this uint self)
@@ -57,7 +62,8 @@ namespace BLAKE3
 
             return new[]
             {
-                (byte) ((self & 0xff000000) >> 24), (byte) ((self & 0x00ff0000) >> 16),
+                (byte) ((self & 0xff000000) >> 24),
+                (byte) ((self & 0x00ff0000) >> 16),
                 (byte) ((self & 0x0000ff00) >> 8), (byte) (self & 0x000000ff)
             };
         }
@@ -65,7 +71,8 @@ namespace BLAKE3
 
     internal static class Functions
     {
-        public static void G(ref uint[] state, uint a, uint b, uint c, uint d, uint mx, uint my)
+        public static void G(ref uint[] state, uint a, uint b, uint c, uint d,
+            uint mx, uint my)
         {
             state[a] = state[a] + state[b] + mx;
             state[d] = (state[d] ^ state[a]).RotateRight(16);
@@ -94,18 +101,22 @@ namespace BLAKE3
             var permuted = new uint[16];
             for (var i = 0; i < 16; i++)
             {
-                permuted[i] = m[Constants.MsgPermutation[i]];
+                permuted[i] = m[BLAKE3Constants.MsgPermutation[i]];
             }
             m = permuted;
         }
 
-        public static uint[] Compress(uint[] chainingValue, uint[] blockWords, ulong counter, uint blockLen, uint flags)
+        public static uint[] Compress(uint[] chainingValue, uint[] blockWords,
+            ulong counter, uint blockLen, uint flags)
         {
             uint[] state =
             {
-                chainingValue[0], chainingValue[1], chainingValue[2], chainingValue[3], chainingValue[4],
-                chainingValue[5], chainingValue[6], chainingValue[7], Constants.Iv[0], Constants.Iv[1], Constants.Iv[2],
-                Constants.Iv[3], (uint) counter, (uint) (counter >> 32), blockLen, flags
+                chainingValue[0], chainingValue[1], chainingValue[2],
+                chainingValue[3], chainingValue[4], chainingValue[5],
+                chainingValue[6], chainingValue[7], BLAKE3Constants.Iv[0],
+                BLAKE3Constants.Iv[1], BLAKE3Constants.Iv[2],
+                BLAKE3Constants.Iv[3], (uint) counter, (uint) (counter >> 32),
+                blockLen, flags
             };
             var block = (uint[]) blockWords.Clone();
 
@@ -136,19 +147,18 @@ namespace BLAKE3
             return compressionOutput.Slice(0, 8);
         }
 
-        public static void WordsFromLittleEndianBytes(byte[] bytes, ref uint[] words)
+        public static void WordsFromLittleEndianBytes(byte[] bytes,
+            ref uint[] words)
         {
-            var j = 0;
-            for (var i = 0; i < bytes.Length; i += 4)
+            for (int i = 0, j = 0; i < bytes.Length; i += 4, j++)
             {
                 var bytesBlock = bytes.Slice(i, 4);
                 words[j] = Extensions.FromLeBytes(bytesBlock);
-
-                j++;
             }
         }
 
-        public static Output ParentOutput(uint[] leftChildCv, uint[] rightChildCv, uint[] key, uint flags)
+        public static Output ParentOutput(uint[] leftChildCv,
+            uint[] rightChildCv, uint[] key, uint flags)
         {
             var blockWords = new uint[16];
             Array.Copy(leftChildCv, 0, blockWords, 0, 8);
@@ -158,14 +168,16 @@ namespace BLAKE3
                 InputChainingValue = key,
                 BlockWords = blockWords,
                 Counter = 0,
-                BlockLen = Constants.BlockLen,
-                Flags = Constants.Parent | flags
+                BlockLen = BLAKE3Constants.BlockLen,
+                Flags = BLAKE3Constants.Parent | flags
             };
         }
 
-        public static uint[] ParentCv(uint[] leftChildCv, uint[] rightChildCv, uint[] key, uint flags)
+        public static uint[] ParentCv(uint[] leftChildCv, uint[] rightChildCv,
+            uint[] key, uint flags)
         {
-            return ParentOutput(leftChildCv, rightChildCv, key, flags).ChainingValue();
+            return ParentOutput(leftChildCv, rightChildCv, key, flags)
+                .ChainingValue();
         }
     }
 
@@ -179,18 +191,25 @@ namespace BLAKE3
 
         public uint[] ChainingValue()
         {
-            return Functions.First8Words(Functions.Compress(InputChainingValue, BlockWords, Counter, BlockLen, Flags));
+            return Functions.First8Words(Functions.Compress(InputChainingValue,
+                BlockWords, Counter, BlockLen, Flags));
         }
 
         public void RootOutputBytes(ref byte[] outSlice)
         {
             ulong outputBlockCounter = 0;
-            for (var i = 0; i < outSlice.Length; i += 2 * (int) Constants.OutLen)
+            for (var i = 0;
+                i < outSlice.Length;
+                i += 2 * (int) BLAKE3Constants.OutLen)
             {
-                var words = Functions.Compress(InputChainingValue, BlockWords, outputBlockCounter, BlockLen,
-                    Flags | Constants.Root);
-                for (int j = 0, k = 0; j < words.Length && k < outSlice.Length; j++, k += 4)
+                var words = Functions.Compress(InputChainingValue, BlockWords,
+                    outputBlockCounter, BlockLen, Flags | BLAKE3Constants.Root);
+                for (int j = 0, k = 0;
+                    j < words.Length && k < outSlice.Length;
+                    j++, k += 4)
+                {
                     Array.Copy(words[j].ToLeBytes(), 0, outSlice, i + k, 4);
+                }
                 outputBlockCounter++;
             }
         }
@@ -209,32 +228,37 @@ namespace BLAKE3
         {
             _chainingValue = key;
             ChunkCounter = chunkCounter;
-            _block = new byte[Constants.BlockLen];
+            _block = new byte[BLAKE3Constants.BlockLen];
             _blockLen = 0;
             _blocksCompressed = 0;
             _flags = flags;
         }
 
-        public uint Len => Constants.BlockLen * _blocksCompressed + _blockLen;
+        public uint Len =>
+            BLAKE3Constants.BlockLen * _blocksCompressed + _blockLen;
 
-        public uint StartFlag => _blocksCompressed == 0 ? Constants.ChunkStart : 0;
+        public uint StartFlag =>
+            _blocksCompressed == 0 ? BLAKE3Constants.ChunkStart : 0;
 
         public void Update(byte[] input)
         {
             while (input.Length > 0)
             {
-                if (_blockLen == Constants.BlockLen)
+                if (_blockLen == BLAKE3Constants.BlockLen)
                 {
                     var blockWords = new uint[16];
-                    Functions.WordsFromLittleEndianBytes(_block, ref blockWords);
-                    _chainingValue = Functions.First8Words(Functions.Compress(_chainingValue, blockWords, ChunkCounter,
-                        Constants.BlockLen, _flags | StartFlag));
+                    Functions.WordsFromLittleEndianBytes(_block,
+                        ref blockWords);
+                    _chainingValue = Functions.First8Words(
+                        Functions.Compress(_chainingValue, blockWords,
+                            ChunkCounter, BLAKE3Constants.BlockLen,
+                            _flags | StartFlag));
                     _blocksCompressed++;
-                    _block = new byte[Constants.BlockLen];
+                    _block = new byte[BLAKE3Constants.BlockLen];
                     _blockLen = 0;
                 }
 
-                var want = Constants.BlockLen - _blockLen;
+                var want = BLAKE3Constants.BlockLen - _blockLen;
                 var take = Math.Min(want, input.Length);
                 Array.Copy(input, 0, _block, _blockLen, take);
                 _blockLen += (byte) take;
@@ -252,7 +276,7 @@ namespace BLAKE3
                 BlockWords = blockWords,
                 Counter = ChunkCounter,
                 BlockLen = _blockLen,
-                Flags = _flags | StartFlag | Constants.ChunkEnd
+                Flags = _flags | StartFlag | BLAKE3Constants.ChunkEnd
             };
         }
     }
@@ -267,7 +291,7 @@ namespace BLAKE3
 
         private BLAKE3(uint[] key, uint flags)
         {
-            HashSizeValue = (int) Constants.OutLen * 8;
+            HashSizeValue = (int) BLAKE3Constants.OutLen * 8;
             State = 0;
 
             _chunkState = new ChunkState(key, 0, flags);
@@ -281,16 +305,16 @@ namespace BLAKE3
             _flags = flags;
         }
 
-        public BLAKE3() : this(Constants.Iv, 0)
+        public BLAKE3() : this(BLAKE3Constants.Iv, 0)
         {
         }
 
         private static uint[] KeyWordsFromKey(byte[] key)
         {
-            if (key.Length != Constants.KeyLen)
+            if (key.Length != BLAKE3Constants.KeyLen)
             {
                 throw new CryptographicException(
-                    $"Expected a {Constants.KeyLen} bytes long key, got a {key.Length} long one");
+                    $"Expected a {BLAKE3Constants.KeyLen} bytes long key, got a {key.Length} long one");
             }
 
             var keyWords = new uint[8];
@@ -298,7 +322,8 @@ namespace BLAKE3
             return keyWords;
         }
 
-        public BLAKE3(byte[] key) : this(KeyWordsFromKey(key), Constants.KeyedHash)
+        public BLAKE3(byte[] key) : this(KeyWordsFromKey(key),
+            BLAKE3Constants.KeyedHash)
         {
             KeyValue = key;
         }
@@ -341,7 +366,8 @@ namespace BLAKE3
             {
                 if (State != 0)
                 {
-                    throw new CryptographicException("Tried to set key on a non-clean hasher");
+                    throw new CryptographicException(
+                        "Tried to set key on a non-clean hasher");
                 }
 
                 KeyValue = value;
@@ -360,7 +386,7 @@ namespace BLAKE3
             var i = ibStart;
             while (i < roof)
             {
-                if (_chunkState.Len == Constants.ChunkLen)
+                if (_chunkState.Len == BLAKE3Constants.ChunkLen)
                 {
                     var chunkCv = _chunkState.Output().ChainingValue();
                     var totalChunks = _chunkState.ChunkCounter + 1;
@@ -368,7 +394,7 @@ namespace BLAKE3
                     _chunkState = new ChunkState(_key, totalChunks, _flags);
                 }
 
-                var want = Constants.ChunkLen - _chunkState.Len;
+                var want = BLAKE3Constants.ChunkLen - _chunkState.Len;
                 var take = (int) Math.Min(want, roof - i);
                 var input = array.Slice(i, take);
                 _chunkState.Update(input);
@@ -383,7 +409,8 @@ namespace BLAKE3
             while (parentNodesRemaining > 0)
             {
                 parentNodesRemaining--;
-                output = Functions.ParentOutput(_cvStack[parentNodesRemaining], output.ChainingValue(), _key, _flags);
+                output = Functions.ParentOutput(_cvStack[parentNodesRemaining],
+                    output.ChainingValue(), _key, _flags);
             }
             var ret = new byte[HashSizeValue / 8];
             output.RootOutputBytes(ref ret);
