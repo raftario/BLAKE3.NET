@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Tests.Helpers
+namespace BLAKE3.Tests.Helpers
 {
     public static class Utilities
     {

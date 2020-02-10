@@ -4,11 +4,10 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Tests.Helpers;
+using BLAKE3.Tests.Helpers;
 using Xunit;
-using BLAKE3;
 
-namespace Tests
+namespace BLAKE3.Tests
 {
     public class HashValidityTests
     {
@@ -27,7 +26,7 @@ namespace Tests
                              File.ReadAllBytes(HashFile(i)) 
                          });
 
-        private readonly BLAKE3.BLAKE3 hasher = new BLAKE3.BLAKE3(); 
+        private readonly BLAKE3 hasher = new BLAKE3(); 
 
         [Theory]
         [MemberData(nameof(GetHashData), 8)]

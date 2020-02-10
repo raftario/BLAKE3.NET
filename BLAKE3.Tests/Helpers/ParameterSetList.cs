@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Tests.Helpers
+namespace BLAKE3.Tests.Helpers
 {
     public abstract class ParameterSetListBase : IEnumerable<object?[]>
     {
