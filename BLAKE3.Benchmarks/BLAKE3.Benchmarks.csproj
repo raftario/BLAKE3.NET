@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!--<TargetFramework>netcoreapp3.1</TargetFramework>-->
+    <RootNamespace>BLAKE3.Benchmarks</RootNamespace>
+    <Optimize>true</Optimize>
+    <DebugSymbols>false</DebugSymbols>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <ApplicationIcon />
+    <StartupObject />
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.12.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BLAKE3\BLAKE3.csproj" />
+  </ItemGroup>
+
+</Project>
