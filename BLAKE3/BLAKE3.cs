@@ -189,13 +189,8 @@ namespace BLAKE3
             {
                 var words = Functions.Compress(InputChainingValue, BlockWords, outputBlockCounter, BlockLen,
                     Flags | Constants.Root);
-                var k = 0;
-                for (var j = 0; j < words.Length; j++)
-                {
+                for (int j = 0, k = 0; j < words.Length && k < outSlice.Length; j++, k += 4)
                     Array.Copy(words[j].ToLeBytes(), 0, outSlice, i + k, 4);
-
-                    k += 4;
-                }
                 outputBlockCounter++;
             }
         }
@@ -402,7 +397,7 @@ namespace BLAKE3
             _chunkState = new ChunkState(_key, 0, _flags);
             for (var i = 0; i < 54; i++)
             {
-                for (var j = 0; j <= 8; j++)
+                for (var j = 0; j < 8; j++)
                 {
                     _cvStack[i][j] = 0;
                 }
